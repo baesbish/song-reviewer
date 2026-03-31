@@ -9,6 +9,7 @@ import Layout from './components/Layout';
 import Home from './pages/Home';
 import NewReview from './pages/NewReview';
 import ViewReview from './pages/ViewReview';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -56,6 +57,7 @@ function App() {
           <AuthenticatedApp />
         </Router>
         <Toaster />
+        <SpeedInsights />
       </QueryClientProvider>
     </AuthProvider>
   )
