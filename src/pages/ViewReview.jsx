@@ -1,10 +1,19 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
 import TrackReviewCard from "../components/TrackReviewCard";
 import FinalVerdict from "../components/FinalVerdict";
 import ScoreLine from "../components/ScoreLine";
 import { ArrowLeft, RefreshCw } from "lucide-react";
+
+const STORAGE_KEY = "vinyl_reviews";
+
+const loadData = () => {
+  return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+};
+
+const saveData = (data) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+};
 
 export default function ViewReview() {
   const { id } = useParams();
@@ -14,16 +23,17 @@ export default function ViewReview() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const load = async () => {
-      const albums = await base44.entities.Album.filter({ id });
-      if (albums.length > 0) {
-        setAlbum(albums[0]);
-        const reviews = await base44.entities.TrackReview.filter({ album_id: id });
-        setTrackReviews(reviews.sort((a, b) => a.track_index - b.track_index));
-      }
-      setLoading(false);
-    };
-    load();
+    const data = loadData();
+    const found = data.find((a) => a.id === id);
+
+    if (found) {
+      setAlbum(found);
+      setTrackReviews(
+        (found.reviews || []).sort((a, b) => a.track_index - b.track_index)
+      );
+    }
+
+    setLoading(false);
   }, [id]);
 
   if (loading) {
@@ -46,7 +56,7 @@ export default function ViewReview() {
     <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Left - Album Cover (permanently anchored) */}
       <div className="lg:w-5/12 lg:h-screen lg:sticky lg:top-0 bg-secondary flex flex-col items-center justify-center p-8 lg:p-12">
-        {album.cover_url ? (
+        {album.coverUrl ? (
           <img
             src={album.cover_url}
             alt={album.title}
@@ -81,13 +91,21 @@ export default function ViewReview() {
           </Link>
           <button
             onClick={async () => {
-              const newAlbum = await base44.entities.Album.create({
+              const data = loadData();
+
+              const newAlbum = {
+                id: Date.now().toString(),
                 artist: album.artist,
                 title: album.title,
-                cover_url: album.cover_url,
+                coverUrl: album.coverUrl,
                 tracklist: album.tracklist,
-                status: "drafting",
-              });
+                reviews: [],
+                status: "draft",
+              };
+
+              data.push(newAlbum);
+              saveData(data);
+
               navigate(`/new?album=${newAlbum.id}`);
             }}
             className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -175,7 +193,7 @@ export default function ViewReview() {
             Track-by-Track
           </span>
           {trackReviews.map((review, i) => (
-            <TrackReviewCard key={review.id} trackReview={review} index={i} />
+            <TrackReviewCard key={i} trackReview={review} index={i} />
           ))}
         </div>
       </div>

@@ -1,8 +1,17 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
 import CriteriaInput from "../components/CriteriaInput";
 import { ArrowRight, ArrowLeft, Upload, X } from "lucide-react";
+
+const STORAGE_KEY = "vinyl_reviews";
+
+const loadData = () => {
+  return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+};
+
+const saveData = (data) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+};
 
 const CRITERIA = [
   { key: "lyrics", label: "Lyrics" },
@@ -50,92 +59,87 @@ export default function NewReview() {
 
   // Load existing album if resuming
   useEffect(() => {
-    if (!existingAlbumId) return;
-    const loadAlbum = async () => {
-      const albums = await base44.entities.Album.filter({ id: existingAlbumId });
-      if (albums.length > 0) {
-        const a = albums[0];
-        setAlbum(a);
-        setArtist(a.artist);
-        setTitle(a.title);
-        setCoverUrl(a.cover_url || "");
-        setTag(a.tag || "");
-        setTracklist(a.tracklist?.length > 0 ? a.tracklist : [""]);
+  if (!existingAlbumId) return;
 
-        // Load existing track reviews
-        const reviews = await base44.entities.TrackReview.filter({ album_id: a.id });
-        setExistingReviews(reviews);
+  const data = loadData();
+  const found = data.find((a) => a.id === existingAlbumId);
 
-        // Determine phase
-        if (!a.tracklist || a.tracklist.length === 0) {
-          setPhase("scope");
-        } else if (a.status === "in_progress") {
-          setPhase("deep_dive");
-          setCurrentTrackIndex(a.current_track_index || 0);
-          // Reconstruct trackScores from existing reviews
-          const scores = {};
-          reviews.forEach((r) => {
-            scores[r.track_index] = {
-              lyrics_score: r.lyrics_score,
-              lyrics_review: r.lyrics_review,
-              production_score: r.production_score,
-              production_review: r.production_review,
-              vocals_score: r.vocals_score,
-              vocals_review: r.vocals_review,
-              composition_score: r.composition_score,
-              composition_review: r.composition_review,
-              emotion_score: r.emotion_score,
-              emotion_review: r.emotion_review,
-            };
-          });
-          setTrackScores(scores);
+  if (found) {
+    setAlbum(found);
+    setArtist(found.artist);
+    setTitle(found.title);
+    setCoverUrl(found.coverUrl || "");
+    setTag(found.tag || "");
+    setTracklist(found.tracklist || [""]);
+    setExistingReviews(found.reviews || []);
+  }
 
-          // If all tracks reviewed, go to final
-          if (reviews.length >= a.tracklist.length) {
-            setPhase("final_verdict");
-            setCurrentTrackIndex(a.tracklist.length - 1);
-          }
-        }
-      }
-      setLoading(false);
-    };
-    loadAlbum();
-  }, [existingAlbumId]);
+  setLoading(false);
+}, [existingAlbumId]);
 
-  const handleUploadCover = async (e) => {
+  const handleUploadCover = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setUploading(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    setCoverUrl(file_url);
-    setUploading(false);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        setCoverUrl(reader.result); // base64 image
+      }
+      setUploading(false);
+    };
+    reader.readAsDataURL(file);
   };
 
-  const handleFoundationNext = async () => {
-    if (!artist.trim() || !title.trim()) return;
-    setSaving(true);
-    if (album) {
-      await base44.entities.Album.update(album.id, { artist, title, cover_url: coverUrl, tag });
-      setAlbum({ ...album, artist, title, cover_url: coverUrl, tag });
-    } else {
-      const created = await base44.entities.Album.create({ artist, title, cover_url: coverUrl, tag, status: "drafting" });
-      setAlbum(created);
-    }
-    setSaving(false);
-    setPhase("scope");
+  const handleFoundationNext = () => {
+  if (!artist.trim() || !title.trim()) return;
+
+  let data = loadData();
+
+  if (album) {
+    const updated = { ...album, artist, title, coverUrl, tag };
+    data = data.map((a) => (a.id === album.id ? updated : a));
+    setAlbum(updated);
+  } else {
+    const newAlbum = {
+      id: Date.now().toString(),
+      artist,
+      title,
+      coverUrl,
+      tag,
+      tracklist: [],
+      reviews: [],
+      status: "draft",
+    };
+    data.push(newAlbum);
+    setAlbum(newAlbum);
+  }
+
+  saveData(data);
+  setPhase("scope");
+};
+
+  const handleScopeNext = () => {
+  const validTracks = tracklist.filter((t) => t.trim());
+  if (validTracks.length === 0) return;
+
+  let data = loadData();
+
+  const updated = {
+    ...album,
+    tracklist: validTracks,
+    status: "in_progress",
   };
 
-  const handleScopeNext = async () => {
-    const validTracks = tracklist.filter((t) => t.trim());
-    if (validTracks.length === 0) return;
-    setSaving(true);
-    await base44.entities.Album.update(album.id, { tracklist: validTracks, status: "in_progress", current_track_index: 0 });
-    setAlbum({ ...album, tracklist: validTracks, status: "in_progress" });
-    setTracklist(validTracks);
-    setCurrentTrackIndex(0);
-    setSaving(false);
-    setPhase("deep_dive");
-  };
+  data = data.map((a) => (a.id === album.id ? updated : a));
+  saveData(data);
+
+  setAlbum(updated);
+  setTracklist(validTracks);
+  setCurrentTrackIndex(0);
+  setPhase("deep_dive");
+};
 
   const getCurrentTrackScores = () => trackScores[currentTrackIndex] || {};
 
@@ -164,68 +168,71 @@ export default function NewReview() {
     return parts.join("\n\n");
   };
 
-  const handleSubmitTrack = async () => {
-    const scores = getCurrentTrackScores();
-    const songScore = computeSongScore(scores);
-    const unifiedReview = synthesizeReview(scores);
+  const handleSubmitTrack = () => {
+  const scores = getCurrentTrackScores();
+  const songScore = computeSongScore(scores);
+  const unifiedReview = synthesizeReview(scores);
 
-    setSaving(true);
+  let data = loadData();
 
-    // Check if review already exists for this track
-    const existing = existingReviews.find((r) => r.track_index === currentTrackIndex);
-    const reviewData = {
-      album_id: album.id,
-      track_index: currentTrackIndex,
-      track_name: tracklist[currentTrackIndex],
-      ...scores,
-      song_score: songScore,
-      unified_review: unifiedReview,
-    };
+  const updatedReviews = [...(album.reviews || [])];
 
-    if (existing) {
-      await base44.entities.TrackReview.update(existing.id, reviewData);
-      setExistingReviews((prev) => prev.map((r) => (r.id === existing.id ? { ...r, ...reviewData } : r)));
-    } else {
-      const created = await base44.entities.TrackReview.create(reviewData);
-      setExistingReviews((prev) => [...prev, created]);
-    }
-
-    // Move to next track or final verdict
-    if (currentTrackIndex < tracklist.length - 1) {
-      const next = currentTrackIndex + 1;
-      setCurrentTrackIndex(next);
-      await base44.entities.Album.update(album.id, { current_track_index: next });
-    } else {
-      // All tracks reviewed — calculate base score
-      const allReviews = [...existingReviews.filter((r) => r.track_index !== currentTrackIndex), { ...reviewData, song_score: songScore }];
-      const baseScore = allReviews.reduce((sum, r) => sum + (r.song_score || 0), 0) / allReviews.length;
-      await base44.entities.Album.update(album.id, { base_score: baseScore });
-      setAlbum((prev) => ({ ...prev, base_score: baseScore }));
-      setPhase("final_verdict");
-    }
-    setSaving(false);
+  updatedReviews[currentTrackIndex] = {
+    track_index: currentTrackIndex,
+    track_name: tracklist[currentTrackIndex],
+    ...scores,
+    song_score: songScore,
+    unified_review: unifiedReview,
   };
 
-  const handleFinalSubmit = async () => {
-    if (!cohesivenessScore || !replayScore) return;
-    setSaving(true);
-
-    const baseScore = album.base_score || 0;
-    // Weighted: 70% base, 15% cohesiveness, 15% replay
-    const finalScore = baseScore * 0.7 + cohesivenessScore * 0.15 + replayScore * 0.15;
-
-    await base44.entities.Album.update(album.id, {
-      cohesiveness_score: cohesivenessScore,
-      cohesiveness_review: cohesivenessReview,
-      replay_value_score: replayScore,
-      replay_value_review: replayReview,
-      final_score: finalScore,
-      status: "completed",
-    });
-
-    setSaving(false);
-    navigate(`/review/${album.id}`);
+  const updatedAlbum = {
+    ...album,
+    reviews: updatedReviews,
   };
+
+  data = data.map((a) => (a.id === album.id ? updatedAlbum : a));
+  saveData(data);
+
+  setAlbum(updatedAlbum);
+
+  if (currentTrackIndex < tracklist.length - 1) {
+    setCurrentTrackIndex(currentTrackIndex + 1);
+  } else {
+    const baseScore =
+      updatedReviews.reduce((sum, r) => sum + (r.song_score || 0), 0) /
+      updatedReviews.length;
+
+    setAlbum((prev) => ({ ...prev, base_score: baseScore }));
+    setPhase("final_verdict");
+  }
+};
+
+  const handleFinalSubmit = () => {
+  if (!cohesivenessScore || !replayScore) return;
+
+  const baseScore = album.base_score || 0;
+  const finalScore =
+    baseScore * 0.7 +
+    cohesivenessScore * 0.15 +
+    replayScore * 0.15;
+
+  let data = loadData();
+
+  const updated = {
+    ...album,
+    cohesiveness_score: cohesivenessScore,
+    cohesiveness_review: cohesivenessReview,
+    replay_value_score: replayScore,
+    replay_value_review: replayReview,
+    final_score: finalScore,
+    status: "completed",
+  };
+
+  data = data.map((a) => (a.id === album.id ? updated : a));
+  saveData(data);
+
+  navigate(`/review/${album.id}`);
+};
 
   if (loading) {
     return (
