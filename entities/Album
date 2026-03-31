@@ -1,0 +1,72 @@
+{
+  "name": "Album",
+  "type": "object",
+  "properties": {
+    "artist": {
+      "type": "string",
+      "title": "Artist"
+    },
+    "title": {
+      "type": "string",
+      "title": "Album Title"
+    },
+    "cover_url": {
+      "type": "string",
+      "title": "Cover Image URL"
+    },
+    "tracklist": {
+      "type": "array",
+      "title": "Tracklist",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "type": "string",
+      "title": "Review Status",
+      "enum": [
+        "drafting",
+        "in_progress",
+        "completed"
+      ],
+      "default": "drafting"
+    },
+    "tag": {
+      "type": "string",
+      "title": "Review Tag"
+    },
+    "current_track_index": {
+      "type": "number",
+      "title": "Current Track Index",
+      "default": 0
+    },
+    "base_score": {
+      "type": "number",
+      "title": "Base Album Score"
+    },
+    "cohesiveness_score": {
+      "type": "number",
+      "title": "Cohesiveness Score"
+    },
+    "cohesiveness_review": {
+      "type": "string",
+      "title": "Cohesiveness Review"
+    },
+    "replay_value_score": {
+      "type": "number",
+      "title": "Replay Value Score"
+    },
+    "replay_value_review": {
+      "type": "string",
+      "title": "Replay Value Review"
+    },
+    "final_score": {
+      "type": "number",
+      "title": "Final Album Score"
+    }
+  },
+  "required": [
+    "artist",
+    "title"
+  ]
+}

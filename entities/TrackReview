@@ -1,0 +1,71 @@
+{
+  "name": "TrackReview",
+  "type": "object",
+  "properties": {
+    "album_id": {
+      "type": "string",
+      "title": "Album ID"
+    },
+    "track_index": {
+      "type": "number",
+      "title": "Track Index"
+    },
+    "track_name": {
+      "type": "string",
+      "title": "Track Name"
+    },
+    "lyrics_score": {
+      "type": "number",
+      "title": "Lyrics Score"
+    },
+    "lyrics_review": {
+      "type": "string",
+      "title": "Lyrics Review"
+    },
+    "production_score": {
+      "type": "number",
+      "title": "Production Score"
+    },
+    "production_review": {
+      "type": "string",
+      "title": "Production Review"
+    },
+    "vocals_score": {
+      "type": "number",
+      "title": "Vocals Score"
+    },
+    "vocals_review": {
+      "type": "string",
+      "title": "Vocals Review"
+    },
+    "composition_score": {
+      "type": "number",
+      "title": "Composition Score"
+    },
+    "composition_review": {
+      "type": "string",
+      "title": "Composition Review"
+    },
+    "emotion_score": {
+      "type": "number",
+      "title": "Emotion Score"
+    },
+    "emotion_review": {
+      "type": "string",
+      "title": "Emotion Review"
+    },
+    "song_score": {
+      "type": "number",
+      "title": "Aggregate Song Score"
+    },
+    "unified_review": {
+      "type": "string",
+      "title": "Unified Track Review"
+    }
+  },
+  "required": [
+    "album_id",
+    "track_index",
+    "track_name"
+  ]
+}
