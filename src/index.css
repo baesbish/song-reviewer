@@ -4,6 +4,7 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Design tokens */
 @layer base {
   :root {
     --font-display: 'Space Grotesk', sans-serif;
@@ -80,17 +81,18 @@
   }
 }
 
+/* Base styles */
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-body;
   }
 }
 
-/* Custom scrollbar for the editorial feel */
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 4px;
 }
@@ -103,6 +105,7 @@
   background: hsl(var(--border));
 }
 
+/* Selection */
 ::selection {
   background: hsl(var(--foreground));
   color: hsl(var(--background));

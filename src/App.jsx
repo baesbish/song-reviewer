@@ -1,64 +1,29 @@
-import { Toaster } from "@/components/ui/toaster"
-import { QueryClientProvider } from '@tanstack/react-query'
-import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import PageNotFound from './lib/PageNotFound';
-import { AuthProvider, useAuth } from '@/lib/AuthContext';
-import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-import Layout from './components/Layout';
-import Home from './pages/Home';
-import NewReview from './pages/NewReview';
-import ViewReview from './pages/ViewReview';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Layout from "./components/Layout"; // Assuming you have this wrapping your pages
+import Home from "./pages/Home";
+import StartReview from "./pages/StartReview"; // Your new launchpad
+import Search from "./pages/Search";           // Formerly NewReview
+import ViewReview from "./pages/ViewReview";   // The actual editor
 
-const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
-
-  // Show loading spinner while checking app public settings or auth
-  if (isLoadingPublicSettings || isLoadingAuth) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
-  // Handle authentication errors
-  if (authError) {
-    if (authError.type === 'user_not_registered') {
-      return <UserNotRegisteredError />;
-    } else if (authError.type === 'auth_required') {
-      // Redirect to login automatically
-      navigateToLogin();
-      return null;
-    }
-  }
-
-  // Render the main app
+export default function App() {
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/new" element={<NewReview />} />
-        <Route path="/review/:id" element={<ViewReview />} />
-        <Route path="*" element={<PageNotFound />} />
-      </Route>
-    </Routes>
+    <Router>
+      {/* Assuming Layout contains your Navbar/Footer */}
+      <Layout>
+        <Routes>
+          {/* 1. The Entry Point */}
+          <Route path="/" element={<Home />} />
+          
+          {/* 2. The Launchpad (New vs Resume) */}
+          <Route path="/start" element={<StartReview />} />
+          
+          {/* 3. The iTunes API Search */}
+          <Route path="/search" element={<Search />} />
+          
+          {/* 4. The Editor */}
+          <Route path="/review/:id" element={<ViewReview />} />
+        </Routes>
+      </Layout>
+    </Router>
   );
-};
-
-
-function App() {
-
-  return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <AuthenticatedApp />
-        </Router>
-        <Toaster />
-      </QueryClientProvider>
-    </AuthProvider>
-  )
 }
-
-export default App
